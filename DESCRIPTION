@@ -1,0 +1,18 @@
+Package: rwaveform
+Title: Waveform LiDAR Data Processing, Analysis, and Point Conversion
+Version: 0.0.1.9000
+Date: 2021-01-24
+Depends: R (>= 4.1.0)
+Authors@R: 
+    person("Hugh", "Worsham", , "huwe@protonmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7924-040X"))
+Description: rwaveform is a minimal personal R package to hold functions for processing waveform LiDAR data for the Worsham et al. East River forest structure project.
+Imports: data.table (>= 1.9.7), caTools, minpack.lm, flux, raster (>=
+        2.8.0), rgdal (>= 1.3.0), sp, rgeos (>= 0.3.8), sqldf,
+        splitstackshape, reshape2, devtools
+Suggests: knitr, rPeaks
+License: `use_mit_license()`
+LazyData: true
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
