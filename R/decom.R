@@ -1,6 +1,6 @@
 #' decom
 #'
-#' The function allows you to eatimate parameters charcterizing waveforms and to pave the way for generating waveform-based point cloud.
+#' The function allows you to estimate parameters charcterizing waveforms and to pave the way for generating waveform-based point cloud.
 #'
 #' @param x is a waveform with a index at the beginning and followed with intensities.
 #' @param smooth is tell whether you want to smooth the waveform to remove some obvious outliers. Default is TRUE.
@@ -55,28 +55,29 @@
 #'
 
 
-decom<-function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
+decom <- function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
   
-  waveform<-as.numeric(x)
-  index<-waveform[1]
-  y <-waveform[-1]
-  y[y==0]<-NA
+  waveform <- as.numeric(x)
+  index <- waveform[1]
+  y <- waveform[-1]
+  y[y==0] <- NA
   
   ### Direct decomposition
-  y <- y-min(y,na.rm = T)+1
+  y <- y-min(y,na.rm = T) + 1
   
   # Smooth waveform with running mean and window of size width, using 'C' algorithm; 'fast' can't handle na
   if (smooth ==TRUE) {
-    y<-runmean(y,width,"C")
+    y <- runmean(y,width,"C")
     } 
   
-  if (peakfix == T) {
-    firstnonzero <- which(y!=0)[1]
-    if (y[[firstnonzero]] >= y[[firstnonzero+1]]) {
-      y[[firstnonzero-1]] <- 0.5 * y[[firstnonzero]]
-    }
-  }
+  # Restore NAs to 0
+  y[is.na(y)] <- 0
   
+  # Fix problematic peaks if necessary
+  if (peakfix == T) {
+    y <- peakfix(y)
+  }
+
   # Identify peaks
   peakrecord <- lpeak(y, 3)
   
@@ -101,7 +102,7 @@ decom<-function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
   
   # Get the number of true peaks
   z <- length(realind)
-
+  
   #then we fliter peak we have in the waveform
   #you must define newpeak as a list or a 1D vector; otherwise it's just a scalar
 

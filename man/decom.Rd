@@ -19,7 +19,7 @@ decom(x, smooth = TRUE, peakfix = FALSE, width = 3, thres = 0.22)
 A list contains estimates of A, u, sig after decomposition.
 }
 \description{
-The function allows you to eatimate parameters charcterizing waveforms and to pave the way for generating waveform-based point cloud.
+The function allows you to estimate parameters charcterizing waveforms and to pave the way for generating waveform-based point cloud.
 }
 \examples{
 

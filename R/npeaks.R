@@ -39,8 +39,8 @@ npeaks<-function(y,drop=c(0,0),smooth=TRUE,threshold=0.2){
   peaknumber<-which(peakrecord == T)#show true's position, namely time in this case
   #peaknumber,it show the peaks' corresponding time
   imax<-max(y,na.rm=T)
-  ind<-y[peaknumber]>threshold*imax
-  realind<-peaknumber[ind]#collect time
+  ind<-y[peaknumber] >= threshold*imax
+  realind<-peaknumber[ind] #collect time
   newpeak<-y[realind]  #collect intensity
   z<-length(realind)
   #return(y)

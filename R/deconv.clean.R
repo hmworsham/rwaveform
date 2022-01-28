@@ -11,11 +11,11 @@
 deconv.clean <- function(de) {
   
   # Clean up NaNs
-  nanrows = which(rowSums(is.na(de))>0)
+  nanrows = which(rowSums(is.na(de[,2:length(de)]))>0)
   for (nr in nanrows){
     hasnan = de[nr]
     if(is.nan(sum(hasnan))){
-      nan.times = which(apply(hasnan, 1, is.nan))
+      nan.times = list(which(apply(hasnan, 1, is.nan)))
       nanline = paste('Waveform', nr, 'returned NaN at time:', nan.times)
       write(nanline, file="deconvlog.txt", append=TRUE)
       for (n in nan.times) {
@@ -32,7 +32,7 @@ deconv.clean <- function(de) {
   }
   
   # Clean up extremely unrealistic values
-  bigrows = which(rowSums(de)>10^5)
+  bigrows = which(rowSums(de[,2:length(de)])>10^5)
   for (br in bigrows){
     hasbig = de[br]
     rescale <- function(x){

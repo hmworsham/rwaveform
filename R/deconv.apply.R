@@ -26,7 +26,6 @@
 #' @keywords waveform, deconvolution, Gold, Richardson-Lucy
 
 #' @export 
-
 deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = T, small_paras=list(c(30,2,1.8,30,1.2,2)), large_paras=list(c(40,4,1.8,40,4,1.8))){
   
   # Install rPeaks if not already installed
