@@ -10,6 +10,7 @@
 #' @return The deconvolved return waveform
 #' @import data.table
 #' @import rPeaks
+#' @import parallel
 #' @examples
 #' decon <- deconv.apply(wfarrays, cliparrays, method = 'Gold', np=2, rescale = F)
 #' 
@@ -50,7 +51,7 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   outir2 <- lapply(as.list(as.data.frame(t(outir_rep))), as.numeric)
   
   # Run deconvolution
-  decon = mapply(rwaveform::deconvolution,
+  decon = mcmapply(rwaveform::deconvolution,
                  re = re1, 
                  out = out1, 
                  imp = sysir2,
