@@ -52,17 +52,16 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   
   # Run deconvolution
   decon = mcmapply(rwaveform::deconvolution,
-                   re1, 
-                   list(
-                     out = out1, 
-                     imp = sysir2,
-                     imp_out = outir2,
-                     method = method,
-                     np = np,
-                     rescale = rescale,
-                     small_paras = small_paras,
-                     large_paras = large_paras),
-                 mc.cores=getOption("mc.cores", detectCores()-2))
+                   re1,
+                   out = out1, 
+                   imp = sysir2,
+                   imp_out = outir2,
+                   method = method,
+                   np = np,
+                   rescale = rescale,
+                   small_paras = small_paras,
+                   large_paras = large_paras,
+                   mc.cores=getOption("mc.cores", detectCores()-2))
   
   # Transpose deconvolution result
   tdecon <- t(decon)
@@ -70,5 +69,5 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   # Create a data table of dim nrow tdecon, ncol decon 
   decon.dt <- data.table(index=1:nrow(tdecon), tdecon)
   
-  return(decon.dt)
+  return(decon)
 }
