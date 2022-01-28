@@ -51,6 +51,7 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   outir2 <- lapply(as.list(as.data.frame(t(outir_rep))), as.numeric)
   
   # Run deconvolution
+<<<<<<< HEAD
   decon = parallel::mcmapply(rwaveform::deconvolution,
                  re = re1, 
                  out = out1, 
@@ -61,6 +62,20 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
                  rescale = rescale,
                  small_paras = small_paras,
                  large_paras = large_paras)
+=======
+  decon = mcmapply(rwaveform::deconvolution,
+                   re1, 
+                   list(
+                     out = out1, 
+                     imp = sysir2,
+                     imp_out = outir2,
+                     method = method,
+                     np = np,
+                     rescale = rescale,
+                     small_paras = small_paras,
+                     large_paras = large_paras),
+                 mc.cores=getOption("mc.cores", detectCores()-2))
+>>>>>>> c23d319558824311bfffb46f3d9d2e3892c1e2c7
   
   # Transpose deconvolution result
   tdecon <- t(decon)
