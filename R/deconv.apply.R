@@ -63,7 +63,7 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
                    rescale = rescale,
                    small_paras = small_paras,
                    large_paras = large_paras,
-                   mc.cores=getOption("mc.cores", detectCores()-2))
+                   mc.cores=getOption("mc.cores", ceiling(detectCores()/2)))
   
   # Transpose deconvolution result
   tdecon <- t(decon)
@@ -71,5 +71,5 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   # Create a data table of dim nrow tdecon, ncol decon 
   decon.dt <- data.table(index=1:nrow(tdecon), tdecon)
   
-  return(decon)
+  return(decon.dt)
 }
