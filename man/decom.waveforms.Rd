@@ -4,7 +4,14 @@
 \alias{decom.waveforms}
 \title{Apply Waveform Decomposition to N Waveforms}
 \usage{
-decom.waveforms(rawarray, deconarray, smooth = T, thres = 0.22, window = 3)
+decom.waveforms(
+  rawarray,
+  deconarray,
+  peakfix = F,
+  smooth = T,
+  thres = 0.22,
+  window = 3
+)
 }
 \arguments{
 \item{rawarray}{is a list of the full set of waveform output from the ingest function. Includes return, outgoing, system impulse response and outgoing impulse response arrays, if all available.}
@@ -18,7 +25,7 @@ decom.waveforms(rawarray, deconarray, smooth = T, thres = 0.22, window = 3)
 \item{rescale}{determines whether to rescale the waveform intensity. Returns are rescaled to the minimum waveform intensity to conduct rescaling. Default is TRUE.}
 }
 \value{
-The deconvolved return waveform
+The decomposed return waveform
 }
 \description{
 This function applies an iterative Gaussian decomposition to a set of waveforms of dim (MxN).

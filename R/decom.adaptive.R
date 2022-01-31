@@ -1,5 +1,5 @@
-
-decom.adaptive<-function(x,smooth=TRUE, peakfix=TRUE, thres=0.22, width=3){
+#' @export
+decom.adaptive<-function(x,smooth=TRUE, peakfix=FALSE, thres=0.22, width=3){
   
   y0<-as.numeric(x)
   index<-y0[1]
@@ -7,20 +7,17 @@ decom.adaptive<-function(x,smooth=TRUE, peakfix=TRUE, thres=0.22, width=3){
   y[y==0]<-NA
   
   ### Prep for direct decomposition
-  y<-y-min(y,na.rm = T)+1
+  y <- y-min(y,na.rm = T)+1
   
   # Smooth waveform with running mean and window of size width, using 'C' algorithm; 'fast' can't handle na
   if (smooth==TRUE) {
-    y<-runmean(y,width,"C")
+    y <- runmean(y,width,"C")
   }
   
   # Fix problematic peaks if necessary
-  if (peakfix == T) {
-    firstnonzero <- which(y!=0)[1]
-    if (y[[firstnonzero]] >= y[[firstnonzero+1]]) {
-      y[[firstnonzero-1]] <- 0.99 * y[[firstnonzero]]
-    }
-  }
+  # if (peakfix == TRUE) {
+  #   y <- rwaveform::peakfix(y)
+  # }
   
   # Restore NAs to 0
   y[is.na(y)] <- 0

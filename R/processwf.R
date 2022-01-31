@@ -78,19 +78,18 @@ process_wf <- function(fp){
   }
   
   # Decompose waveforms
-  decomp <- mcmapply(
-                  rwaveform::decom.adaptive,
-                  decon,
-                  smooth=T,
-                  peakfix=T,
-                  thres=0.2,
-                  width=3,
-                  mc.cores=getOption("mc.cores", ceiling(detectCores()/2)))
+  decomp <- rwaveform::decom.apply(
+    wfarrays,
+    decon,
+    smooth=T,
+    peakfix=T,
+    thres=0.2,
+    width=3)
   
   print(paste('Decomposed. Result is of dim:', list(dim(decomp))))
   
   # geotransform waveforms to points
   wfpts = geotransform(decomp = decomp$repars, decomp$geolocation)
   
-  return(decomp)
+  return(wfpts)
 }
