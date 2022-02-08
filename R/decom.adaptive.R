@@ -2,7 +2,7 @@
 decom.adaptive<-function(x,smooth=TRUE, peakfix=FALSE, thres=0.22, width=3){
   
   y0<-as.numeric(x)
-  index<-y0[1]
+  index<-as.integer(y0[1])
   y<-y0[-1]
   y[y==0]<-NA
   

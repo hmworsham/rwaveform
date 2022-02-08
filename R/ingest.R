@@ -10,15 +10,20 @@
 #' - outgoing impulse response
 #'
 #' @return A list with five components, `out`, `re`, `geol`, `sysir`, and `outir`, each representing the arrays contained in the binary package
-
-#'#' @examples
+#' @import progress
+#' @import caTools
+#'
+#' @examples
 #' wf <- ingest('./Data/2018_CRBU_1_2018061214_FL002-001')
 #' for w in wf:
 #'     print(w[1:10])
 
 #' @keywords waveform
 
-readbinary_ <- function(datafile, headerfile) {
+readbinary_ <- function(file) {
+  datafile = file[1]
+  headerfile = file[2]
+  
   out = tryCatch(
     {
       read.ENVI(datafile, headerfile = headerfile)
@@ -63,43 +68,60 @@ ingest <- function(flightpath){
                      pattern = 'impulse_response_T0', 
                      value = T)
   
+  wf_paths = list(
+    obs_bin, 
+    geo_bin,
+    out_bin,
+    re_bin,
+    imp_re_bin,
+    imp_out_bin)
+  
   # Read the binary files as arrays
-  obs_array = readbinary_(obs_bin[1], headerfile = obs_bin[2])
-  out_array = readbinary_(out_bin[1], headerfile = out_bin[2])
-  geo_array = readbinary_(geo_bin[1], headerfile = geo_bin[2])
-  re_array = readbinary_(re_bin[1], headerfile = re_bin[2])
-  imp_re_array = readbinary_(imp_re_bin[1], headerfile = imp_re_bin[2])
-  imp_out_array = readbinary_(imp_out_bin[1], headerfile = imp_out_bin[2])
+  # pb$tick()
+  # obs_array = readbinary_(obs_bin[1], headerfile = obs_bin[2])
+  # pb$tick()
+  # out_array = readbinary_(out_bin[1], headerfile = out_bin[2])
+  # pb$tick()
+  # geo_array = readbinary_(geo_bin[1], headerfile = geo_bin[2])
+  # pb$tick()
+  # re_array = readbinary_(re_bin[1], headerfile = re_bin[2])
+  # pb$tick()
+  # imp_re_array = readbinary_(imp_re_bin[1], headerfile = imp_re_bin[2])
+  # pb$tick()
+  # imp_out_array = readbinary_(imp_out_bin[1], headerfile = imp_out_bin[2])
+  wf_arrays = pbmclapply(wf_paths, readbinary_)
   
-  # Load return as reshaped data table
-  out = data.table(index=c(1:nrow(out_array)), out_array)
-  re = data.table(index=c(1:nrow(re_array)), re_array)
-  geol = data.table(index=c(1:nrow(geo_array)), geo_array)
-  sysir = data.table(index=c(1:nrow(imp_re_array)), imp_re_array)
-  outir = data.table(index=c(1:nrow(imp_re_array)), imp_re_array)
-  
+  #Load return as reshaped data table
+  obs = data.table(index=c(1:nrow(wf_arrays[[1]])), wf_arrays[[1]])
+  geol = data.table(index=c(1:nrow(wf_arrays[[2]])), wf_arrays[[2]])
+  out = data.table(index=c(1:nrow(wf_arrays[[3]])), wf_arrays[[3]])
+  re = data.table(index=c(1:nrow(wf_arrays[[4]])), wf_arrays[[4]])
+  outir = data.table(index=c(1:nrow(wf_arrays[[5]])), wf_arrays[[5]])
+  sysir = data.table(index=c(1:nrow(wf_arrays[[6]])), wf_arrays[[6]])
+
   # Assign new geo column names to work with downstream functions
   geoindex = c(1:9,16)
   colnames(geol)[geoindex] = c(
-    'index', 
-    'orix', 
-    'oriy', 
-    'oriz', 
-    'dx', 
-    'dy', 
-    'dz', 
-    'outref', 
-    'refbin', 
+    'index',
+    'orix',
+    'oriy',
+    'oriz',
+    'dx',
+    'dy',
+    'dz',
+    'outref',
+    'refbin',
     'outpeak')
-  
+
   # Return values
   wf_arrays = list(
-    'out' = out, 
-    're' = re, 
-    'geol' = geol, 
-    'sysir' = sysir, 
-    'outir' = outir)
-  
+    'out' = out,
+    're' = re,
+    'geol' = geol,
+    'sysir' = sysir,
+    'outir' = outir, 
+    'obs' = obs)
+
   return(wf_arrays)
   
 }

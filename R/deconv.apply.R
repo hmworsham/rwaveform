@@ -42,6 +42,7 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   sysir_rep = rawarray$sysir[rep(seq_len(nrow(rawarray$sysir)), nrow(subarray$re))]
   
   # Remove the index columns -- we'll replace them later
+  idx = subarray$re$index
   out = subset(subarray$out, select = -index)
   re = subset(subarray$re, select = -index)
   outir_rep = subset(outir_rep, select = -index)
@@ -64,7 +65,7 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
                    rescale = rescale,
                    small_paras = small_paras,
                    large_paras = large_paras,
-                   mc.cores=getOption("mc.cores", ceiling(detectCores()/2)))
+                   mc.cores=getOption("mc.cores", ceiling(detectCores()-2)))
   
   # Transpose deconvolution result
   tdecon <- t(decon)

@@ -4,7 +4,7 @@
 \alias{readbinary_}
 \title{Ingest Binary Waveform Data}
 \usage{
-readbinary_(datafile, headerfile)
+readbinary_(file)
 }
 \arguments{
 \item{flightpath}{A string pointing to the filepath of a directory containing one waveform binary package. The package should typically contain, at minimum, header (.hdr) and binary data files describing:
@@ -19,12 +19,13 @@ readbinary_(datafile, headerfile)
 }
 \value{
 A list with five components, \code{out}, \code{re}, \code{geol}, \code{sysir}, and \code{outir}, each representing the arrays contained in the binary package
-#' @examples
-wf <- ingest('./Data/2018_CRBU_1_2018061214_FL002-001')
-for w in wf:
-print(w\link{1:10})
 }
 \description{
 This function allows you to ingest waveform data in the ENVI binary format provided by NEON Airborne Observing Platform acquisitions.
+}
+\examples{
+wf <- ingest('./Data/2018_CRBU_1_2018061214_FL002-001')
+for w in wf:
+    print(w[1:10])
 }
 \keyword{waveform}

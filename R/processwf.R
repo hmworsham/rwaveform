@@ -35,7 +35,10 @@ process_wf <- function(fp){
   outir <- wfarrays$outir
   sysir <- wfarrays$sysir
   
-  sub <- sample(seq(1:nrow(out)), 1000)
+  set.seed(123)
+  sub <- sample(seq(1:nrow(re)), 100000, replace=F)
+  #sub <- seq(1:5000)
+  #sub <- seq(1:nrow(re))
   out_sub <- out[sub]
   re_sub <- re[sub]
   geol_sub <- geol[sub]
@@ -50,6 +53,9 @@ process_wf <- function(fp){
     small_paras = list(c(30,2,1.2,30,2,2)),
     large_paras = list(c(40,4,1.8,30,2,2)))
   
+  # Restore index
+  decon$index <- re_sub$index
+  
   # Check for NaNs and extreme values
   #decon <- subset(decon, select = -index)
   print(paste('Deconvolved. Result is of dim:', list(dim(decon))))
@@ -59,37 +65,40 @@ process_wf <- function(fp){
   # Clean NaNs and extreme values
   if(length(nanrows) | length(bigrows)) {
     decon <- deconv.clean(decon)
-    print(paste('Cleaned Result is of dim:', list(dim(decon))))
+    print(paste('Cleaned. Result is of dim:', list(dim(decon))))
   }
   
   # Find npeaks
   decon <- data.table(t(apply(decon, 1, peakfix)))
   np <- apply(decon, 1, npeaks, smooth=F, threshold=0)
-  print(dim(decon))
+  
   # Store indices of returns with potentially unreasonable number of peaks or 0 peaks
-  #unreasonable <- decon[np>12]$index
-  nopeaks <- which(np==0)
+  unreasonable <- decon[np>18]$index
+  nopeaks <- decon[np==0]$index
   
   # Filter out 0 and unreasonable peak vectors
-  if (length(nopeaks)) {
-    decon <- decon[-nopeaks,]
-    #decon <- decon[-unreasonable,]
-    print(dim(decon))
+  if (length(nopeaks) | length(unreasonable)) {
+    decon <- decon[!decon$index %in% nopeaks,]
+    decon <- decon[!decon$index %in% unreasonable,]
   }
   
   # Decompose waveforms
   decomp <- rwaveform::decom.apply(
-    wfarrays,
+    sub_arrays,
+    deconvolved=T,
     decon,
     smooth=T,
-    peakfix=T,
-    thres=0.2,
-    width=3)
+    peakfix=F,
+    thres=0.25,
+    window=3)
   
-  print(paste('Decomposed. Result is of dim:', list(dim(decomp))))
+  print(paste('Decomposed. Result is of dim:', list(dim(decomp$repars))))
   
   # geotransform waveforms to points
   wfpts = geotransform(decomp = decomp$repars, decomp$geolocation)
   
+  # write geotransformed results to csv
+  outname = tail(str_split(fp, '/')[[1]],1)
+  write.csv(wfpts, paste0('/global/scratch/users/worsham/geolocated_returns/', outname, '_returnpoints.csv'))
   return(wfpts)
 }

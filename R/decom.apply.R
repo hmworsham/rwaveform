@@ -27,54 +27,143 @@
 
 #' @keywords waveform, deconvolution, Gold, Richardson-Lucy
 
+reprocess_ <- function(probwfs, re, ge, ge2, rf, gp, th, wd){
+  
+  # Set problematic waveforms to list
+  decon.prob = lapply(as.list(as.data.frame(t(re[re$index %in% probwfs]))), as.numeric)
+  geol.prob = ge[ge$index %in% probwfs,]
+  
+  # Use error handling to identify erroneous or un-decomposable returns
+  safedecomp_ = function(x, peakfix=peakfix, smooth = smooth, thres, width){
+    tryCatch(decom.adaptive(x, peakfix=peakfix, smooth = smooth, thres, width), 
+             error = function(e){NA})}
+  
+  # Attempt decomposition with stricter threshold parameters
+  decomp.prob = pbmclapply(
+    decon.prob,
+    safedecomp_,
+    peakfix=peakfix,
+    smooth=smooth,
+    thres=th,
+    width=wd,
+    mc.cores=getOption("mc.cores", ceiling(detectCores()-2))
+  )
+  
+  # Filter out returns that threw exceptions
+  successes2 = which(!is.na(decomp.prob) & lengths(decomp.prob)>=3)
+  idx3 = probwfs[successes2]
+  
+  if (length(successes2)) {
+    decomp3 = decomp.prob[successes2]
+    geol3 = geol.prob[geol.prob$index %in% idx3,]
+    
+    # Pull indices and Gaussian parameters
+    rfit.prob = do.call('rbind', lapply(decomp3, '[[', 1)) # Indices of correctly processed waveforms
+    gpars.prob = do.call('rbind', lapply(decomp3, '[[', 3)) # The Gaussian parameters
+    
+    # Bind re-processed problematic waveform indices and Gaussian params to first successful set
+    rfit2 = rbind(rf, rfit.prob)
+    gpars2 = rbind(gp, gpars.prob)
+    geol2 = rbind(ge2, geol3)
+    print(c('Lengths of rfit, gpars & geol2:', nrow(rfit2), nrow(gpars2), nrow(geol2)))
+  
+  } else {
+      rfit2 = rf
+      gpars2 = gp
+      geol2 = ge2
+    }
+  
+  return(list('rfit'=rfit2, 'gpars' = gpars2, 'geol2'=geol2, 'successidx'=idx3))
+}
+
 #' @export 
 # Function to run waveform decomposition
-decom.waveforms <- function(rawarray, deconarray, peakfix=F, smooth=T, thres=0.22, window=3) {
+decom.apply <- function(rawarray, deconvolved=T, deconarray, peakfix=F, smooth=T, thres=0.22, window=3) {
+  
+  if (deconvolved){
+    re <- deconarray
+  } else {
+    re <- rawarray$re
+  }
   
   # Define return and geo arrays
-  #re = wfarray$return
   geol = rawarray$geol
   
-  # Remove the index columns -- we'll replace them later
-  decon = subset(decon, select = -index)
-  #geol = subset(geol, select = -index)
-    
   ## Convert the arrays to lists for batch deconvolution
-  decon2 = lapply(as.list(as.data.frame(t(decon))), as.numeric)
-  #geol2 = lapply(as.list(as.data.frame(t(geol))), as.numeric)
+  idx = re$index
+  decon2 = lapply(as.list(as.data.frame(t(re))), as.numeric)
   
   # Run adaptive decomposition algorithm on clipped returns
   # Use error handling to identify erroneous or un-decomposable returns
-  safe_decomp = function(x){
+  safedecomp_ = function(x, peakfix=peakfix, smooth = smooth, thres = thres, width = window){
     tryCatch(decom.adaptive(x, peakfix=peakfix, smooth = smooth, thres = thres, width = window), 
              error = function(e){NA})}
   
   # Apply safe decomposition to the set
-  decomp = pbmcmapply(
-    safe_decomp,
+  decomp = pbmclapply(
     decon2,
-    mc.cores=getOption("mc.cores", ceiling(detectCores()/2))
+    safedecomp_,
+    peakfix=peakfix,
+    smooth=smooth,
+    thres=thres,
+    width=window,
+    mc.cores=getOption("mc.cores", ceiling(detectCores()-2))
   )
   
   # Filter out returns that threw exceptions
-  successes = which(!is.na(decomp))
-  decomp = decomp[successes]
-  geol = geol[successes]
+  successes = which(!is.na(decomp) & lengths(decomp)>=3)
+  decomp2 = decomp[successes]
+  idx2 = idx[successes]
+  geol2 = geol[geol$index %in% idx2,]
   
   # Pull Gaussian parameters
-  rfit = do.call('rbind', lapply(decomp, '[[', 1)) # Indices of correctly processed waveforms
-  gpars = do.call('rbind', lapply(decomp, '[[', 3)) # The Gaussian parameters
+  rfit = do.call('rbind', lapply(decomp2, '[[', 1)) # Indices of correctly processed waveforms
+  gpars = do.call('rbind', lapply(decomp2, '[[', 3)) # The Gaussian parameters
   
   # Get indices of waveforms that need to be reprocessed
-  problem_wfs = setdiff(as.numeric(re[,1]$index), rfit[!is.na(rfit)])
-  problem_index = which(lapply(decomp, 'is.null')==T)
+  problem_wfs = setdiff(as.numeric(idx), as.numeric(idx2))
+  
+  # Retry with more strict params
+  if (length(problem_wfs)) {
+    print(paste('There were', length(problem_wfs), 'problems. Retrying with stricter parameters.'))
+    retry1 = reprocess_(
+      probwfs=problem_wfs, 
+      re=re, 
+      ge=geol, 
+      ge2=geol2, 
+      rf=rfit, 
+      gp=gpars, 
+      th=0.25, 
+      wd=3)
+    problem_wfs = setdiff(as.numeric(problem_wfs), as.numeric(retry1$successidx))
+    rfit = retry1$rfit
+    gpars = retry1$gpars
+    geol2 = retry1$geol2
+    
+    # Retry with extremely strict params
+    if(length(problem_wfs)) {
+      print(paste('There were', length(problem_wfs), 'problems. Retrying with strictest parameters.'))
+      retry2 = reprocess_(
+        problem_wfs, 
+        re, 
+        geol, 
+        geol2, 
+        rfit, 
+        gpars, 
+        0.99, 
+        9)
+      problem_wfs = setdiff(as.numeric(problem_wfs), as.numeric(retry2$successidx))
+      rfit = retry2$rfit
+      gpars = retry2$gpars
+      geol2 = retry2$geol2
+    }
+  }
   
   # Preserve parameters that resulted from successful decomposition
   repars = gpars[!is.na(gpars[,1]),]
   colnames(repars) = c('index', 'A', 'u', 'sigma', 'r', 'A_std', 'u_std', 'sig_std', 'r_std')
-  geol = geol[!problem_index]
   geolcols <- c(1:9,16)
-  colnames(geol)[geolcols] <- c('index', 'orix', 'oriy', 'oriz', 'dx', 'dy', 'dz', 'outref', 'refbin', 'outpeak')
+  colnames(geol2)[geolcols] <- c('index', 'orix', 'oriy', 'oriz', 'dx', 'dy', 'dz', 'outref', 'refbin', 'outpeak')
   
-  return(list('repars' = repars, 'geolocation' = geol))
+  return(list('repars' = repars, 'geolocation' = geol2))
 }
