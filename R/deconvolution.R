@@ -72,15 +72,15 @@ deconvolution <- function(re,out,imp,imp_out=NULL,method =c("Gold"),np=2,rescale
 
   if (rescale == TRUE) {
     y[y==0] = NA;
-    y = y-min(y,na.rm=T)+1
+    y = y-suppressWarnings(min(y,na.rm=T))+1
     y[is.na(y)] = 0
 
     x[x==0] = NA 
-    x = x - min(x, na.rm=T) + 1
+    x = x - suppressWarnings(min(x, na.rm=T)) + 1
     x[is.na(x)] = 0
  
     imp[imp==0] = NA
-    minim = min(imp,na.rm=TRUE)
+    minim = suppressWarnings(min(imp,na.rm=TRUE))
     imp = imp-minim+1
     imp[is.na(imp)] = 0
   }
@@ -100,7 +100,7 @@ deconvolution <- function(re,out,imp,imp_out=NULL,method =c("Gold"),np=2,rescale
     
     # Prepare the impulse response vector
     imp_out[imp_out==0] = NA
-    imp_out = imp_out - min(imp_out,na.rm=TRUE)
+    imp_out = imp_out - suppressWarnings(min(imp_out,na.rm=TRUE))
     imp_out[is.na(imp_out)] = 0
     
     # Deconvolve the impulse response
@@ -148,16 +148,14 @@ deconvolution <- function(re,out,imp,imp_out=NULL,method =c("Gold"),np=2,rescale
           method=method)
       },
       error = function(cond) {
-        message(paste('Deconvolution failed.'))
-        message('This is the original error message:')
-        message(cond)
+        message(paste('Deconvolution failed.', cond))
+        
         # Specify return value in case of error
         return(NULL)
       },
       warning = function(cond) {
-        message(paste('Deconvolution raised a warning.'))
-        message('This is the original warning message:')
-        message(cond)
+        message(paste('Warning in deconvolution.', cond))
+        
         # Specify return value in case of warning
         return(NULL)
       }

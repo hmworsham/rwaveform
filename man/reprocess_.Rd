@@ -4,7 +4,7 @@
 \alias{reprocess_}
 \title{Apply Waveform Decomposition to N Waveforms}
 \usage{
-reprocess_(probwfs, re, ge, ge2, rf, gp, th, wd)
+reprocess_(retries, re, ge, ge2, rf, gp, th, wd)
 }
 \arguments{
 \item{rawarray}{is a list of the full set of waveform output from the ingest function. Includes return, outgoing, system impulse response and outgoing impulse response arrays, if all available.}

@@ -1,6 +1,6 @@
 #' npeaks
 #'
-#' The function allows you to briefly know how many peaks you have in a waveform
+#' The function allows you to quickly know how many peaks you have in a waveform
 #'
 #' @param y is the waveform intensities.
 #' @param drop is the index of waveform index we should ingore or non-intensity of waveform information.Default is c(0,0) that means use the all input data.
@@ -30,7 +30,7 @@ npeaks<-function(y,drop=c(0,0),smooth=TRUE,threshold=0.2){
   if (drop[1]>0){
     y<-y[-c(drop[1]:drop[2])]}
   ###when for direct decomposition
-  y<-y-min(y,na.rm = T)+1
+  y<-y-suppressWarnings(min(y,na.rm = T))+1
   if(smooth){
     y<-runmean(y,3,"C")  ###when we identify the peaks, maybe we should not use the smooth function
   }
@@ -38,7 +38,7 @@ npeaks<-function(y,drop=c(0,0),smooth=TRUE,threshold=0.2){
   peakrecord<-lpeak(y,3)#show TRUE and FALSE
   peaknumber<-which(peakrecord == T)#show true's position, namely time in this case
   #peaknumber,it show the peaks' corresponding time
-  imax<-max(y,na.rm=T)
+  imax<-suppressWarnings(max(y,na.rm=T))
   ind<-y[peaknumber] >= threshold*imax
   realind<-peaknumber[ind] #collect time
   newpeak<-y[realind]  #collect intensity

@@ -8,46 +8,74 @@
 #' @keywords waveform, deconvolution, Gold, Richardson-Lucy
 #' @export 
 
-deconv.clean <- function(de) {
+deconv.clean <- function(y) {
   
-  # Clean up NaNs
-  nanrows = which(rowSums(is.na(de[,2:length(de)]))>0)
-  for (nr in nanrows){
-    hasnan = de[nr]
-    if(is.nan(sum(hasnan))){
-      nan.times = list(which(apply(hasnan, 1, is.nan)))
-      nanline = paste('Waveform', nr, 'returned NaN at time:', nan.times)
-      write(nanline, file="deconvlog.txt", append=TRUE)
-      for (n in nan.times) {
-        if (n>2 & n < 500) {
-          hasnan[[n]] = mean(c(hasnan[[n+1]], hasnan[[n-1]]))
-        } else if (n < 500) {
-          hasnan[[n]] = hasnan[[n+1]]
-        } else {
-          hasnan[[n]] = hasnan[[n-1]]
-        }
-      }
+  nantimes = which(is.na(y))
+  for(n in nantimes){
+    if (n>2 & n<500) {
+      y[n] <- mean(c(y[n+1], y[n-1]))
+    } else if (n<500) {
+      y[n] <- y[n+1]
+    } else {
+      y[n] <- y[n-1]
     }
-    de[nr] = hasnan
   }
   
-  # Clean up extremely unrealistic values
-  bigrows = which(rowSums(de[,2:length(de)])>10^5)
-  for (br in bigrows){
-    hasbig = de[br]
+  if(sum(y)>10^5) {
     rescale <- function(x){
-      if (x!=0){
-        basis = ceiling(log10(x))
-        rs = x*10^-(basis+3)
-      } else {
-        rs = 0
+            if (x!=0){
+              basis = ceiling(log10(x))
+              rs = x*10^-(basis+3)
+            } else {
+              rs = 0
+            }
+            return(rs)
       }
-      return(rs)
-    }
-    hasbig = data.table(t(apply(hasbig, 1, rescale)))
-    de[br] = hasbig
+    y <- sapply(y, rescale)
   }
-  
-  return(de)
-  }
+  return(y)
+}
+
+# deconv.clean <- function(de) {
+#   
+#   # Clean up NaNs
+#   nanrows = which(rowSums(is.na(de[,2:length(de)]))>0)
+#   for (nr in nanrows){
+#     hasnan = de[nr]
+#     if(is.nan(sum(hasnan))){
+#       nan.times = list(which(apply(hasnan, 1, is.nan)))
+#       nanline = paste('Waveform', nr, 'returned NaN at time:', nan.times)
+#       write(nanline, file="deconvlog.txt", append=TRUE)
+#       for (n in nan.times) {
+#         if (n>2 & n < 500) {
+#           hasnan[[n]] = mean(c(hasnan[[n+1]], hasnan[[n-1]]))
+#         } else if (n < 500) {
+#           hasnan[[n]] = hasnan[[n+1]]
+#         } else {
+#           hasnan[[n]] = hasnan[[n-1]]
+#         }
+#       }
+#     }
+#     de[nr] = hasnan
+#   }
+#   
+#   # Clean up extremely unrealistic values
+#   bigrows = which(rowSums(de[,2:length(de)])>10^5)
+#   for (br in bigrows){
+#     hasbig = de[br]
+#     rescale <- function(x){
+#       if (x!=0){
+#         basis = ceiling(log10(x))
+#         rs = x*10^-(basis+3)
+#       } else {
+#         rs = 0
+#       }
+#       return(rs)
+#     }
+#     hasbig = data.table(t(apply(hasbig, 1, rescale)))
+#     de[br] = hasbig
+#   }
+#   
+#   return(de)
+#   }
   

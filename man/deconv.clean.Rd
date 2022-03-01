@@ -4,7 +4,7 @@
 \alias{deconv.clean}
 \title{QA and Clean Results of Deconvolution}
 \usage{
-deconv.clean(de)
+deconv.clean(y)
 }
 \arguments{
 \item{de}{is a data.table of deconvolved waveform results with popential errors}

@@ -15,30 +15,57 @@
 #' @import data.table
 #' @import rPeaks
 #' @import parallel
+#' @importFrom ParallelLogger addDefaultFileLogger clearLoggers logInfo logTrace logWarn logError logFatal
 #' @examples
 #' 
 #' @keywords waveform, LiDAR
 
-#' @export 
+#' @export
 #' 
-#' 
-process_wf <- function(fp){
+process_wf_deprec <- function(fp, logpath=logpath, outdir=outdir){
+  
+  # Define logging filepath
+  clearLoggers()
+  addDefaultFileLogger(logpath)
+  
+  # Get flightpath name from path
+  filenam = tail(unlist(strsplit(fp, '/')), 1)
   
   # Ingest waveforms
   wfarrays = ingest(fp)
-  print(paste('flightpath', fp, 'ingested'))
   
-  # Subset to a manageable set of waveforms for testing
+  # Check ingest results and log errors 
+  if(is.null(wfarrays)) {
+    ParallelLogger::logError(
+      paste(
+        filenam, 
+        ': Ingest failed. A data or header file may be missing.'))
+    return(NULL)
+  } else {
+    ParallelLogger::logTrace(
+      paste(
+        filenam, 
+        ': Successfully ingested.'))
+  }
+  
+  # Separate waveform arrays into distinct variables
   out <- wfarrays$out
   re <- wfarrays$re
   geol <- wfarrays$geol
   outir <- wfarrays$outir
   sysir <- wfarrays$sysir
   
-  set.seed(123)
-  sub <- sample(seq(1:nrow(re)), 100000, replace=F)
+  ParallelLogger::logTrace(
+      paste(
+        filenam, 
+        ':',
+        nrow(re),
+        'returns in array.'))
+  
+  #set.seed(99)
+  #sub <- sample(seq(1:nrow(re)), 10000, replace=F)
   #sub <- seq(1:5000)
-  #sub <- seq(1:nrow(re))
+  sub <- seq(1:nrow(re))
   out_sub <- out[sub]
   re_sub <- re[sub]
   geol_sub <- geol[sub]
@@ -50,55 +77,87 @@ process_wf <- function(fp){
     sub_arrays, 
     method='Gold', 
     rescale=F,
-    small_paras = list(c(30,2,1.2,30,2,2)),
+    small_paras = list(c(20,2,1.2,20,2,1.2)),
     large_paras = list(c(40,4,1.8,30,2,2)))
+  
+  # Check results of deconvolution and log errors
+  if(any(unlist(apply(decon, 1, is))=='try-error')) {
+    ParallelLogger::logError(
+      paste(
+        filenam, 
+        ': Deconvolution failed for index(es):', 
+        which(unlist(apply(decon, 1, is))=='try-error')))
+  } else {
+    ParallelLogger::logTrace(
+      paste(
+        filenam, 
+        ': All deconvolutions succeeded.'))
+  }
   
   # Restore index
   decon$index <- re_sub$index
   
   # Check for NaNs and extreme values
-  #decon <- subset(decon, select = -index)
-  print(paste('Deconvolved. Result is of dim:', list(dim(decon))))
+  #print(paste('Deconvolved. Result is of dim:', list(dim(decon))))
   nanrows = which(rowSums(is.na(decon))>0)
   bigrows = which(rowSums(decon[,2:length(decon)])>10^5)
-  
+
   # Clean NaNs and extreme values
   if(length(nanrows) | length(bigrows)) {
-    decon <- deconv.clean(decon)
-    print(paste('Cleaned. Result is of dim:', list(dim(decon))))
+    decon = deconv.clean(decon)
+    #print(paste('Cleaned. Result is of dim:', list(dim(decon))))
+    ParallelLogger::logWarn(paste(filenam, ':', length(nanrows), 'vectors had NaNs and were cleaned:', paste(nanrows, collapse=',')))
+    ParallelLogger::logWarn(paste(filenam, ':', length(bigrows), 'vectors had unrealistically large values and were cleaned:', paste(bigrows, collapse=',')))
   }
-  
+
   # Find npeaks
-  decon <- data.table(t(apply(decon, 1, peakfix)))
-  np <- apply(decon, 1, npeaks, smooth=F, threshold=0)
-  
+  decon = data.table(t(apply(decon, 1, peakfix)))
+  np = rwaveform::npeaks.apply(
+    decon,
+    drop=c(1,1),
+    smooth=F,
+    thres=0
+  )
+
   # Store indices of returns with potentially unreasonable number of peaks or 0 peaks
-  unreasonable <- decon[np>18]$index
-  nopeaks <- decon[np==0]$index
+  unreasonable = as.integer(which(np>24))
+  nopeaks = as.integer(which(np==0))
   
   # Filter out 0 and unreasonable peak vectors
-  if (length(nopeaks) | length(unreasonable)) {
-    decon <- decon[!decon$index %in% nopeaks,]
-    decon <- decon[!decon$index %in% unreasonable,]
+  if (length(nopeaks)) {
+    decon = decon[!decon$index %in% nopeaks,]
+    ParallelLogger::logWarn(paste(filenam, ':', length(nopeaks), 'vectors had no peaks and were removed:', paste(nopeaks, collapse=',')))
   }
-  
+  if (length(unreasonable)) {
+    decon = decon[!decon$index %in% unreasonable,]
+    ParallelLogger::logWarn(paste(filenam, ':', length(unreasonable), 'vectors had unrealistically many peaks and were removed:', paste(unreasonable, collapse=',')))
+  }
+
   # Decompose waveforms
-  decomp <- rwaveform::decom.apply(
+  decomp = rwaveform::decom.apply(
     sub_arrays,
     deconvolved=T,
     decon,
-    smooth=T,
     peakfix=F,
-    thres=0.25,
-    window=3)
+    smooth=T,
+    thres=0.01,
+    window=5)
   
-  print(paste('Decomposed. Result is of dim:', list(dim(decomp$repars))))
+  #print(paste('Decomposed. Result is of dim:', list(dim(decomp$repars))))
+  if (length(decomp$problems)) {
+    ParallelLogger::logWarn(
+      paste(
+        filenam,
+        ':',
+        length(decomp$problems), 'vectors failed in decomposition and were removed:', paste(decomp$problems, collapse=',')))
+  }
   
   # geotransform waveforms to points
   wfpts = geotransform(decomp = decomp$repars, decomp$geolocation)
-  
+
   # write geotransformed results to csv
-  outname = tail(str_split(fp, '/')[[1]],1)
-  write.csv(wfpts, paste0('/global/scratch/users/worsham/geolocated_returns/', outname, '_returnpoints.csv'))
-  return(wfpts)
+  outname = paste0(filenam, '_returnpoints.csv')
+  write.csv(wfpts, file.path(outdir, outname))
+  
+  return(print('Done'))
 }

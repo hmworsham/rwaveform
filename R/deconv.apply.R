@@ -49,10 +49,10 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
   sysir_rep = subset(sysir_rep, select = -index)
   
   # Convert the arrays to lists for batch deconvolution
-  re1 <- lapply(as.list(as.data.frame(t(re))), as.numeric)
-  out1 <- lapply(as.list(as.data.frame(t(out))), as.numeric)
-  sysir2 <- lapply(as.list(as.data.frame(t(sysir_rep))), as.numeric)
-  outir2 <- lapply(as.list(as.data.frame(t(outir_rep))), as.numeric)
+  re1 = lapply(as.list(as.data.frame(t(re))), as.numeric)
+  out1 = lapply(as.list(as.data.frame(t(out))), as.numeric)
+  sysir2 = lapply(as.list(as.data.frame(t(sysir_rep))), as.numeric)
+  outir2 = lapply(as.list(as.data.frame(t(outir_rep))), as.numeric)
   
   # Run deconvolution
   decon = pbmcmapply(rwaveform::deconvolution,
@@ -65,7 +65,7 @@ deconv.apply <- function(rawarray, subarray, method = 'Gold', np = 2, rescale = 
                    rescale = rescale,
                    small_paras = small_paras,
                    large_paras = large_paras,
-                   mc.cores=getOption("mc.cores", ceiling(detectCores()-2)))
+                   mc.cores=getOption("mc.cores", ceiling(detectCores()*.25)))
   
   # Transpose deconvolution result
   tdecon <- t(decon)

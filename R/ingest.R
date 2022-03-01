@@ -10,7 +10,6 @@
 #' - outgoing impulse response
 #'
 #' @return A list with five components, `out`, `re`, `geol`, `sysir`, and `outir`, each representing the arrays contained in the binary package
-#' @import progress
 #' @import caTools
 #'
 #' @examples
@@ -21,32 +20,55 @@
 #' @keywords waveform
 
 readbinary_ <- function(file) {
+  
+  # Define header file and binary data file
   datafile = file[1]
   headerfile = file[2]
+  out = read.ENVI(datafile, headerfile = headerfile)
   
-  out = tryCatch(
-    {
-      read.ENVI(datafile, headerfile = headerfile)
-    },
-    error = function(cond) {
-      message(paste('Data or header file seems to be missing:', datafile[1]))
-      message('This is the original error message:')
-      message(cond)
-      # Specify return value in case of error
-      return(NULL)
-    },
-    warning = function(cond) {
-      message(paste('Ingesting file', datafile[1], 'caused a warning:'))
-      message('This is the original warning message:')
-      message(cond)
-      # Specify return value in case of warning
-      return(NULL)
-    }
-  )
+  return(out)
+}
+
+cleanup_ <- function(wf_arrays) {
+  
+  # Define waveform data as reshaped data table for output
+  obs = data.table(index=c(1:nrow(wf_arrays[[1]])), wf_arrays[[1]])
+  geol = data.table(index=c(1:nrow(wf_arrays[[2]])), wf_arrays[[2]])
+  out = data.table(index=c(1:nrow(wf_arrays[[3]])), wf_arrays[[3]])
+  re = data.table(index=c(1:nrow(wf_arrays[[4]])), wf_arrays[[4]])
+  outir = data.table(index=c(1:nrow(wf_arrays[[5]])), wf_arrays[[5]])
+  sysir = data.table(index=c(1:nrow(wf_arrays[[6]])), wf_arrays[[6]])
+  
+  # Assign new geo column names to work with downstream functions
+  geoindex = c(1:9,16)
+  colnames(geol)[geoindex] = c(
+    'index',
+    'orix',
+    'oriy',
+    'oriz',
+    'dx',
+    'dy',
+    'dz',
+    'outref',
+    'refbin',
+    'outpeak')
+  
+  # Return values as arrays in named list
+  wf_arrays = list(
+    'out' = out,
+    're' = re,
+    'geol' = geol,
+    'sysir' = sysir,
+    'outir' = outir,
+    'obs' = obs)
+  
+  return(wf_arrays)
 }
 
 #' @export
 ingest <- function(flightpath){
+  
+  filenam = tail(unlist(strsplit(flightpath, '/')), 1)
   
   # Name the waveform files to ingest
   obs_bin = grep(list.files(flightpath, full.names = T), # Observation
@@ -68,6 +90,7 @@ ingest <- function(flightpath){
                      pattern = 'impulse_response_T0', 
                      value = T)
   
+  # Concatenate all of those files to a list
   wf_paths = list(
     obs_bin, 
     geo_bin,
@@ -76,52 +99,40 @@ ingest <- function(flightpath){
     imp_re_bin,
     imp_out_bin)
   
-  # Read the binary files as arrays
-  # pb$tick()
-  # obs_array = readbinary_(obs_bin[1], headerfile = obs_bin[2])
-  # pb$tick()
-  # out_array = readbinary_(out_bin[1], headerfile = out_bin[2])
-  # pb$tick()
-  # geo_array = readbinary_(geo_bin[1], headerfile = geo_bin[2])
-  # pb$tick()
-  # re_array = readbinary_(re_bin[1], headerfile = re_bin[2])
-  # pb$tick()
-  # imp_re_array = readbinary_(imp_re_bin[1], headerfile = imp_re_bin[2])
-  # pb$tick()
-  # imp_out_array = readbinary_(imp_out_bin[1], headerfile = imp_out_bin[2])
-  wf_arrays = pbmclapply(wf_paths, readbinary_)
-  
-  #Load return as reshaped data table
-  obs = data.table(index=c(1:nrow(wf_arrays[[1]])), wf_arrays[[1]])
-  geol = data.table(index=c(1:nrow(wf_arrays[[2]])), wf_arrays[[2]])
-  out = data.table(index=c(1:nrow(wf_arrays[[3]])), wf_arrays[[3]])
-  re = data.table(index=c(1:nrow(wf_arrays[[4]])), wf_arrays[[4]])
-  outir = data.table(index=c(1:nrow(wf_arrays[[5]])), wf_arrays[[5]])
-  sysir = data.table(index=c(1:nrow(wf_arrays[[6]])), wf_arrays[[6]])
+  # Ingest all binary/hdr file pairs in list
+  wf_arrays = mclapply(
+    wf_paths,
+    readbinary_)
 
-  # Assign new geo column names to work with downstream functions
-  geoindex = c(1:9,16)
-  colnames(geol)[geoindex] = c(
-    'index',
-    'orix',
-    'oriy',
-    'oriz',
-    'dx',
-    'dy',
-    'dz',
-    'outref',
-    'refbin',
-    'outpeak')
+  # Clean the arrays and adjust column names where needed
+  wf_arrays <- tryCatch(
+    {
+      cleanup_(wf_arrays)
+    },
 
-  # Return values
-  wf_arrays = list(
-    'out' = out,
-    're' = re,
-    'geol' = geol,
-    'sysir' = sysir,
-    'outir' = outir, 
-    'obs' = obs)
+    error = function(cond) {
+      message(
+        paste(
+          filenam,
+          ': Cleaning flightpath threw an error. The original message is:',
+          cond))
+
+      # Specify return value in case of error
+      return(NULL)
+    },
+
+    warning = function(cond) {
+      message(
+        paste(
+          filenam,
+          'Cleaning flightpath threw a warning. The original message is:',
+          cond))
+
+      # Specify return value in case of warning
+      return(NULL)
+    }
+  )
 
   return(wf_arrays)
-  
+
 }

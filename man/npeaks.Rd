@@ -19,7 +19,7 @@ npeaks(y, drop = c(0, 0), smooth = TRUE, threshold = 0.2)
 return the number of waveform componments.
 }
 \description{
-The function allows you to briefly know how many peaks you have in a waveform
+The function allows you to quickly know how many peaks you have in a waveform
 }
 \examples{
 
