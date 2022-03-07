@@ -4,10 +4,10 @@
 \alias{process_wf}
 \title{Deconvolve, Decompose, and Geolocate Waveforms}
 \usage{
-process_wf(fp, outdir)
+process_wf(fp, logpath, outdir)
 }
 \arguments{
-\item{x}{is string pointing to the filepath of a directory containing one waveform binary package. The package should typically contain, at minimum, header (.hdr) and binary data files describing:
+\item{fp}{is string pointing to the filepath of a directory containing one waveform binary package. The package should typically contain, at minimum, header (.hdr) and binary data files describing:
 \itemize{
 \item observation parameters
 \item geolocation
