@@ -113,7 +113,15 @@ process_wf <- function(fp, logpath, outdir){
     np = npeaks(decon, drop=c(0,0), smooth=F, thres=0)
     
     # Exit if no peaks or unreasonable peaks
-    if(np==0 || np>24){
+    if(np==0){
+      #deconerr = data.frame('fp'=filenam, 'index'=idx, 'np'=0)
+      #write.csv(deconerr, '/global/scratch/users/worsham/logs/decon_errors.csv', append=T)
+      return(NA)
+    }
+    
+    if(np>=18){
+      #deconerr = data.frame('fp'=filenam, 'index'=idx, 'np'=np)
+      #write.csv(deconerr, '/global/scratch/users/worsham/logs/decon_errors.csv', append=T)
       return(NA)
     }
     
@@ -147,23 +155,63 @@ process_wf <- function(fp, logpath, outdir){
       }
     }
     
-    if(length(decom)<3) return(NA)
+    if(length(decom)<3) {
+      #decomerr = data.frame('fp'=filenam, 'index'=idx, 'result'='failed')
+      #write.csv(decomerr, '/global/scratch/users/worsham/logs/decom_errors.csv', append=T)
+      return(NA)
+    }
     
     gpar = decom[[3]]
 
     return(list('rfit' = idx, 'gpar'=gpar, 'geol'=geol.v))
   }
   
+  # workernodes <- system('srun hostname', intern = TRUE)
+  # 
+  # cl <- parallel::makeCluster(
+  #   workernodes, 
+  #   methods=F)
+  # 
+  # setDefaultCluster(cl)
+  # registerDoParallel(cl)
+  # 
+  # # Load packages on node and set DT threads to 1
+  # clusterEvalQ(cl = cl, {
+  #   library(data.table)
+  #   library(devtools)
+  #   library(rPeaks)
+  #   library(ParallelLogger)
+  #   load_all('~/Repos/rwaveform')
+  #   setDTthreads(1)
+  # })
+  # 
+  # clusterExport(cl=cl, varlist=c('out', 're', 'geol', 'outir', 'sysir', 'processvector'), envir=environment())
+  # 
+  # t1=Sys.time()
+  # results = clusterMap(
+  #   cl=cl,
+  #   fun=processvector,
+  #   out,
+  #   re,
+  #   geol,
+  #   outir,
+  #   sysir
+  #   )
+  # t2=Sys.time()
+  # print(t2-t1)
+  
   results = mcmapply(
     processvector,
     out,
-    re, 
+    re,
     geol,
     outir,
     sysir,
-    mc.preschedule = T, 
-    mc.cores = getOption("mc.cores", ceiling(detectCores()*0.6))
+    mc.preschedule = T,
+    mc.cores = getOption("mc.cores", detectCores()-1)
   )
+  
+  #stopCluster(cl)
   
   assemble <- function(results, filenam, outdir){
   
@@ -194,11 +242,10 @@ process_wf <- function(fp, logpath, outdir){
   tryCatch({
     assemble(results, filenam, outdir)
     }, error = function(e) {
-    return(ParallelLogger::logError(paste(filenam, ': failed.')))    
+    return(ParallelLogger::logError(paste(filenam, ': failed.', e)))    
    })
-  
-  gc()
-  Sys.sleep(5)
+
+  Sys.sleep(3)
 }
 
 
