@@ -4,7 +4,7 @@
 \alias{decom}
 \title{decom}
 \usage{
-decom(x, smooth = TRUE, peakfix = FALSE, width = 3, thres = 0.22)
+decom(x, peakmetrics, smooth = TRUE, peakfix = FALSE, width = 3, thres = 0.1)
 }
 \arguments{
 \item{x}{is a waveform with a index at the beginning and followed with intensities.}

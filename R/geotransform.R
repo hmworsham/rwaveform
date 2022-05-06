@@ -76,21 +76,24 @@
 #'
 
 
-geotransform<-function (decomp,geo,source="decomposition"){
-  ###1 get the right geo reference according to the data you got
-  decomp<- data.table(decomp)
-  # setnames(decomp,c("A","u","sigma","A_se","u_se","sigma_se"),
-  #           c("pi","t","sd","pise","tse","sdse"))
+geotransform <- function(decomp, geo, source="decomposition"){
+  
+  # Get georeference data
+  decomp = data.table(decomp)
 
-  id<-unique(decomp$index)
+  # Check that indices in both dataframes are a set
+  dc.id = unique(decomp$index)
+  geo = geo[geo$index %in% dc.id,]
+  
+  ge.id = unique(geo$index)
+  decomp = decomp[decomp$index %in% ge.id,]
 
-  geosub0<-geo[geo$index %in% id,]
-
-  ###2 create a geolocation dataframe which consistent with our decomposition data
+  # Create a geolocation dataframe consistent with our decomposition data
   rindex<-table(decomp$index)
-  geo0<-data.frame(geosub0,rindex)
+  geo0<-data.frame(geo, rindex)
   ngeo<-expandRows(geo0, "Freq")
-
+  
+  # Assign variables from geolocation columns
   orix<-ngeo$orix
   oriy<-ngeo$oriy
   oriz<-ngeo$oriz
@@ -99,81 +102,87 @@ geotransform<-function (decomp,geo,source="decomposition"){
   dz<-ngeo$dz
   refbin<-ngeo$refbin
 
-  ##these two will be used for the deconvolution and decomposition result
+  ## outref and outpeak become the reference points for decon+decom results
   outref<-ngeo$outref
   outpeak<-ngeo$outpeak
 
-  ####3 find corresponding decomposition parameters file
+  # Find corresponding decomposition parameters file
   nr<-nrow(decomp)
-  peak<-decomp$u;sd<-decomp$sigma;tse<-decomp$u_std
+  peak<-decomp$u
+  sd<-decomp$sigma
+  tse<-decomp$u_std
   low<-peak-sd*sqrt(2*log(2))
   up<-peak+sd*sqrt(2*log(2))
-
-
 
   ###4 begin to calculate
 
   #################to calculate the peak, leading and trail edge position
   if (source=="decomposition"){
-    sgeo<-matrix(NA,nr,29)
-    sgeo[,1:7]<-cbind(decomp$index,decomp$A,decomp$u,decomp$sigma,decomp$A_std,decomp$u_std,decomp$sig_std)
-    sgeo[,8]<-(peak-refbin)*dx+orix
-    sgeo[,9]<-(peak-refbin)*dy+oriy
-    sgeo[,10]<-(peak-refbin)*dz+oriz
-    sgeo[,11]<-(low-refbin)*dx+orix
-    sgeo[,12]<-(low-refbin)*dy+oriy
-    sgeo[,13]<-(low-refbin)*dz+oriz
-    sgeo[,14]<-(up-refbin)*dx+orix
-    sgeo[,15]<-(up-refbin)*dy+oriy
-    sgeo[,16]<-(up-refbin)*dz+oriz
+    sgeo<-matrix(NA,nr,32)
+    sgeo[,1:10]<-cbind(decomp$index,decomp$A,decomp$u,decomp$sigma,decomp$A_std,decomp$u_std,decomp$sigma_std,decomp$pw,decomp$fs,decomp$ha)
+    sgeo[,11]<-(peak-refbin)*dx+orix
+    sgeo[,12]<-(peak-refbin)*dy+oriy
+    sgeo[,13]<-(peak-refbin)*dz+oriz
+    sgeo[,14]<-(low-refbin)*dx+orix
+    sgeo[,15]<-(low-refbin)*dy+oriy
+    sgeo[,16]<-(low-refbin)*dz+oriz
+    sgeo[,17]<-(up-refbin)*dx+orix
+    sgeo[,18]<-(up-refbin)*dy+oriy
+    sgeo[,19]<-(up-refbin)*dz+oriz
 
-    #### to calculate the uncertianty of using peak,
+    #### to calculate the uncertainty of using peak,
+    
     ####upper peak
-    sgeo[,17]<-sgeo[,8] + 1.96*tse*dx;
-    sgeo[,18]<-sgeo[,9] + 1.96*tse*dy;
-    sgeo[,19]<-sgeo[,10] + 1.96*tse*dz;
+    sgeo[,20]<-sgeo[,11] + 1.96*tse*dx;
+    sgeo[,21]<-sgeo[,12] + 1.96*tse*dy;
+    sgeo[,22]<-sgeo[,13] + 1.96*tse*dz;
+    
     ####lower peak
-    sgeo[,20]<-sgeo[,8] - 1.96*tse*dx;
-    sgeo[,21]<-sgeo[,9] - 1.96*tse*dy;
-    sgeo[,22]<-sgeo[,10] - 1.96*tse*dz;
+    sgeo[,23]<-sgeo[,11] - 1.96*tse*dx;
+    sgeo[,24]<-sgeo[,12] - 1.96*tse*dy;
+    sgeo[,25]<-sgeo[,13] - 1.96*tse*dz;
 
     ####upper leading edge
-    sgeo[,23]<-sgeo[,11] + 1.96*tse*dx;
-    sgeo[,24]<-sgeo[,12] + 1.96*tse*dy;
-    sgeo[,25]<-sgeo[,13] + 1.96*tse*dz;
+    sgeo[,26]<-sgeo[,14] + 1.96*tse*dx;
+    sgeo[,27]<-sgeo[,15] + 1.96*tse*dy;
+    sgeo[,28]<-sgeo[,16] + 1.96*tse*dz;
+    
     ####lower leading edge
-    sgeo[,26]<-sgeo[,11] - 1.96*tse*dx;
-    sgeo[,27]<-sgeo[,12] - 1.96*tse*dy;
-    sgeo[,28]<-sgeo[,13] - 1.96*tse*dz;
+    sgeo[,29]<-sgeo[,14] - 1.96*tse*dx;
+    sgeo[,30]<-sgeo[,15] - 1.96*tse*dy;
+    sgeo[,31]<-sgeo[,16] - 1.96*tse*dz;
 
-    ########we need to give the return number of points i think
-    ###http://stackoverflow.com/questions/20869374/create-the-frequency-count-from-a-vector-in-r
-    ind<-decomp$index;rn<-ave(ind, ind, FUN = seq_along)
-    sgeo[,29]<-rn
-    colnames(sgeo)<- c("index","pi","t","sd","pise","tse","sdse","px","py","pz","lowx","lowy","lowz","upx","upy","upz",
+    #
+    ind<-decomp$index
+    rn<-ave(ind, ind, FUN = seq_along)
+    sgeo[,32]<-rn
+    colnames(sgeo)<- c("index","pi","t","sd","pise","tse","sdse","pw","fs","ha","px","py","pz","lowx","lowy","lowz","upx","upy","upz",
                        "uncerUXpeak","uncerUYpeak","uncerUZpeak","uncerLXpeak","uncerLYpeak","uncerLZpeak",
-                       "uncerUXleading","uncerUYleading","uncerUZleadig","uncerLXleading","uncerLYleading","uncerLZleading","rn")
+                       "uncerUXleading","uncerUYleading","uncerUZleading","uncerLXleading","uncerLYleading","uncerLZleading","rn")
   } else {
-    sgeo<-matrix(NA,nr,17)
-    sgeo[,1:7]<-cbind(decomp$index,decomp$pi,decomp$t,decomp$sd,decomp$pise,decomp$tse,decomp$sdse)
-    sgeo[,8]<-(peak-refbin-outpeak+outref)*dx+orix
-    sgeo[,9]<-(peak-refbin-outpeak+outref)*dy+oriy
-    sgeo[,10]<-(peak-refbin-outpeak+outref)*dz+oriz
+    sgeo<-matrix(NA,nr,20)
+    sgeo[,1:10]<-cbind(decomp$index,decomp$A,decomp$u,decomp$sigma,decomp$A_std,decomp$u_std,decomp$sigma_std,decomp$pw,decomp$fs,decomp$ha)
+    sgeo[,11]<-(peak-refbin-outpeak+outref)*dx+orix
+    sgeo[,12]<-(peak-refbin-outpeak+outref)*dy+oriy
+    sgeo[,13]<-(peak-refbin-outpeak+outref)*dz+oriz
 
-    #### to calculate the uncertianty of using peak,
+    #### to calculate the uncertainty of using peak,
     ####upper peak
-    sgeo[,11]<-sgeo[,8] + 1.96*tse*dx;
-    sgeo[,12]<-sgeo[,9] + 1.96*tse*dy;
-    sgeo[,13]<-sgeo[,10] + 1.96*tse*dz;
+    sgeo[,14]<-sgeo[,11] + 1.96*tse*dx;
+    sgeo[,15]<-sgeo[,12] + 1.96*tse*dy;
+    sgeo[,16]<-sgeo[,13] + 1.96*tse*dz;
     ####lower peak
-    sgeo[,14]<-sgeo[,8] - 1.96*tse*dx;
-    sgeo[,15]<-sgeo[,9] - 1.96*tse*dy;
-    sgeo[,16]<-sgeo[,10] - 1.96*tse*dz;
-    ########we need to give the return number of points i think
-    ###http://stackoverflow.com/questions/20869374/create-the-frequency-count-from-a-vector-in-r
-    ind<-decomp$index;rn<-ave(ind, ind, FUN = seq_along)
-    sgeo[,17]<-rn
-    colnames(sgeo)<-c("index","pi","t","sd","pise","tse","sdse","px","py","pz","uncerUXpeak","uncerUYpeak","uncerUZpeak","uncerLXpeak","uncerLYpeak","uncerLZpeak","rn")
+    sgeo[,17]<-sgeo[,11] - 1.96*tse*dx;
+    sgeo[,18]<-sgeo[,12] - 1.96*tse*dy;
+    sgeo[,19]<-sgeo[,13] - 1.96*tse*dz;
+    
+    # Get return number
+    ind<-decomp$index
+    rn<-ave(ind, ind, FUN = seq_along)
+    sgeo[,20]<-rn
+    
+    # Assign column names
+    colnames(sgeo)<-c("index","pi","t","sd","pise","tse","sdse","pw","fs","ha","px","py","pz","uncerUXpeak","uncerUYpeak","uncerUZpeak","uncerLXpeak","uncerLYpeak","uncerLZpeak","rn")
 
   }
 

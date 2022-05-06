@@ -11,13 +11,15 @@
 
 peakfix <- function(y){
   # Find the first nonzero
-  firstnonzero = which(y[2:length(y)]!=0)[1]
+  firstnonzero = which(y!=0)[1]
   if (is.na(firstnonzero)) {
-    #print(paste('No peaks found in vector', y[1]))
-  } else {
-  if (y[[firstnonzero]] >= y[[firstnonzero+1]]) {
-    y[[firstnonzero-1]] <- 0.99 * y[[firstnonzero]]
-  }
-  }
+    #ParallelLogger::logError(paste('No peaks found in vector', y[1]))
+    return(NULL)
+  } else if (firstnonzero == 1) {
+    #ParallelLogger::logError(paste('First peak invalid', y))
+    return(NULL)
+  } else if (y[[firstnonzero]] >=y [[firstnonzero+1]]){
+        y[[firstnonzero-1]] <- 0.99 * y[[firstnonzero]]
+        }
   return(y)
-}
+  }

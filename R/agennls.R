@@ -8,7 +8,6 @@
 #' @param r is the rate parameter of adpative or generalized Gaussian distribution. For Gaussian distributionm, r is fixed to 2.
 #' @return return a formula suitable for different number of waveform componments with adaptive Gaussian distribution.
 #' @importFrom stats as.formula
-#' @export
 #' @examples
 #'
 #' ###these four should have the same length
@@ -20,7 +19,7 @@
 #' ###start values
 #' fgs<-fg$start
 
-
+#' @export
 agennls <- function(A, u, sig, r) {
   n <- seq_along(A)
   fs <- paste("y~",

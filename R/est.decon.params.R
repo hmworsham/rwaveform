@@ -1,6 +1,6 @@
 #' @export
-decom.adaptive<-function(x, smooth=TRUE, peakfix=FALSE, thres=0.22, width=3){
-  suppressWarnings({
+est.decon.params <- function(x, smooth=TRUE, peakfix=FALSE, thres=0.22, width=3){
+  
     y0<-as.numeric(x)
     index<-as.integer(y0[1])
     y<-y0[-1]
@@ -14,13 +14,13 @@ decom.adaptive<-function(x, smooth=TRUE, peakfix=FALSE, thres=0.22, width=3){
       y <- runmean(y, width, "C")
     }
     
+    # Restore NAs to 0
+    y[is.na(y)] <- 0
+    
     # Fix problematic peaks if necessary
     if (peakfix == TRUE) {
       y <- rwaveform::peakfix(y)
     }
-    
-    # Restore NAs to 0
-    y[is.na(y)] <- 0
     
     # Identify peaks
     peakrecord <- lpeak(y, 3)
@@ -157,5 +157,4 @@ decom.adaptive<-function(x, smooth=TRUE, peakfix=FALSE, thres=0.22, width=3){
       }
       return (list(rightfit,ga,pmi))
     }
-  })
 }

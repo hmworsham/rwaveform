@@ -32,6 +32,12 @@ predictloss <- function(inventorydir, shapedir, predictrees, aoi) {
   y = st_as_sf(df, coords = c('X', 'Y'), crs = '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs')
   y = st_transform(y, '+proj=utm +zone=13 +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
   
+  plot(plotsf, axes=T)
+  plot(st_geometry(y), pch='+', col='lightblue4', add=T)
+  plot(st_geometry(predictrees), pch='+', add=TRUE, col='firebrick2')
+  legend('topright', legend=c('Field trees', 'Modeled trees'), col=c('lightblue4', 'firebrick2'), pch='+', cex=0.6)
+  
+  nn = st_nn(predictrees, y, k=1, returnDist=T)
   dists = unlist(nn$dist)
   nns = unlist(nn$nn)
   delta.ht = c()

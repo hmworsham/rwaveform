@@ -55,7 +55,7 @@
 #'
 
 
-decom <- function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
+decom <- function(x, peakmetrics, smooth=TRUE, peakfix=FALSE, width=3, thres=0.1){
   
   waveform <- as.numeric(x)
   index <- waveform[1]
@@ -67,7 +67,7 @@ decom <- function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
   
   # Smooth waveform with running mean and window of size width, using 'C' algorithm; 'fast' can't handle na
   if (smooth ==TRUE) {
-    y <- runmean(y,width,"C")
+    y <- runmean(y,width,'C')
     } 
   
   # Restore NAs to 0
@@ -79,47 +79,50 @@ decom <- function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
   }
 
   # Identify peaks
-  peakrecord <- lpeak(y, 3)
+  #peakrecord <- lpeak(y, 3)
   
   # Find return time of peak
-  peaktime <- which(peakrecord == T)
-  n.peaks = length(peaktime)
+  #peaktime <- which(peakrecord == T)
+  peaktime = peakmetrics$mu
+  npeaks = length(peaktime)
   
-  # Catch errors where the deconvolved waveform catches no peaks
-  if (n.peaks == 0){
-    peaktime <- which.max(y)
+  # If no peaks in the deconvolved waveform, take the max of the vector as only peak
+  if (npeaks == 0){
+    peaktime = which.max(y)
   }
   
   # Filter out noisy peaks (those less than threshold*max intensity in the return vector)
-  imax <- max(y, na.rm=T)
-  ind <- y[peaktime] >= thres*imax
+  ymax = max(y, na.rm=T)
+  peak.idxs = y[peaktime] >= thres*ymax
   
   # Get the time of true peaks
-  realind<-peaktime[ind]
-  
-  # Get the intensity of real peaks
-  newpeak<-y[realind]
+  realpeak.idxs = peaktime[peak.idxs]
   
   # Get the number of true peaks
-  z <- length(realind)
+  real.npeaks <- length(realpeak.idxs)
+  
+  # Get the intensity of real peaks
+  newpeak = peakmetrics[peakmetrics$mu %in% realpeak.idxs,]$A
+  
+  # Get sigma of true peaks
+  sigmas <- peakmetrics[peakmetrics$mu %in% realpeak.idxs,]$sigma
   
   #then we fliter peak we have in the waveform
   #you must define newpeak as a list or a 1D vector; otherwise it's just a scalar
 
   ### Initialize parameters
   ### For normal Gaussian
-  gu<-realind
-  gi<-newpeak*2/3
-  gsd<-realind[1]/5
-  if (z>1){
-    gsd[2:z]<-diff(realind)/4
-  }
+  gu = realpeak.idxs
+  gi = newpeak*0.8
+  gsd = sigmas
+  # gsd<-realpeak.idxs[1]/5
+  # if (real.npeaks>1){
+  #   gsd[2:real.npeaks]<-diff(realpeak.idxs)/4
+  # }
   
   # Fit gaussians using the auto generate formula
 
   init0 <- gennls(A=gi, u=gu, sig=gsd)
-  #init$formula
-  #init$start
   df<-data.frame(x=seq_along(y),y)
 
   log<-tryCatch(
@@ -135,32 +138,58 @@ decom <- function(x, smooth=TRUE, peakfix=FALSE, width=3, thres=0.22){
         ptol = .Machine$double.eps),
       na.action=na.omit),
     error=function(e) NULL)
-
-  ###then you need to determine if this nls is sucessful or not?
+  
+  ### Determine whether nls fit was successful
   if (!is.null(log)){
-    result=summary(fit)$parameters
-    pn<-sum(result[,1]>0)
-    rownum<-nrow(result);npeak<-rownum/3
-
-    #record the shot number of not good fit
-    rightfit<-NA;ga<-matrix(NA,rownum,5);#pmi<-matrix(NA,npeak,7)
-    ga<-cbind(index,result)
-    pmi<-NULL
+    result = summary(fit)$parameters
+    pn = sum(result[,1]>0)
+    rownum = nrow(result)
+    npeak = rownum/3
+    
+    # Record the shot number of unsuccessful fits
+    goodfit.idx = index
+    ga = cbind(index,result)
+    pmi = NULL
+    
     if (pn==rownum){
-      rightfit<-index
+      goodfit.idx = index
 
-      ####directly get the parameters
-      ###make a matrix
-      pm<-matrix(NA,npeak,6)
-      pm[,1]<-result[1:npeak,1];pm[,4]<-result[1:npeak,2]
+      # Assemble parameters into matrix
+      # Make a matrix
+      pm = matrix(NA,npeak,9)
+      
+      # Populate
+      # A
+      pm[,1]<-result[1:npeak,1]
+      pm[,4]<-result[1:npeak,2]
+      
+      # mu
       s2<-npeak+1;e2<-2*npeak
-      pm[,2]<-result[s2:e2,1];pm[,5]<-result[s2:e2,2]
+      pm[,2]<-result[s2:e2,1]
+      pm[,5]<-result[s2:e2,2]
+      
+      # sigma
       s3<-2*npeak+1;e3<-3*npeak
-      pm[,3]<-result[s3:e3,1];pm[,6]<-result[s3:e3,2]
+      pm[,3]<-result[s3:e3,1]
+      pm[,6]<-result[s3:e3,2]
+
+      # Estimate full width at half-maximum
+      FWAHM = pm[,3]*2*sqrt(2*log(2))
+      pm[,7] = FWAHM
+      
+      # Estimate front slope
+      FS = peakmetrics[peakmetrics$mu %in% realpeak.idxs,]$fs
+      pm[,8] = FS
+      
+      # Find first half-intensity bin
+      HA <- peakmetrics[peakmetrics$mu %in% realpeak.idxs,]$ha
+      pm[,9] = HA
+     
+      # Bind index to parameters
       pmi<-cbind(index,pm)
-      colnames(pmi) = c("index","A","u","sigma","A_std","u_std","sig_std")
+      colnames(pmi) = c('index','A','u','sigma','A_std','u_std','sig_std', 'w', 'fs', 'ha')
     }
-    return (list(rightfit,ga,pmi))
+    return (list(goodfit.idx, ga, pmi))
   }
 }
 

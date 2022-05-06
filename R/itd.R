@@ -34,10 +34,17 @@ itd <- function(nlas, aoi){
   geoextent = as.list(extent(plotsf))
   
   # Run locate_trees
+  # f = function(x) {
+  #   y <- 2.2 * (-(exp(-0.08*(x-2)) - 1)) + 3
+  #   y[x < 2] <- 3
+  #   y[x > 20] <- 7
+  #   return(y)
+  # }
+  
   f = function(x) {
-    y <- 2.2 * (-(exp(-0.08*(x-2)) - 1)) + 3
-    y[x < 2] <- 3
-    y[x > 20] <- 7
+    y <- 1+1.2*exp(-0.05*(x-2))
+    y[x<2] <- 3
+    y[x>20] <- 13
     return(y)
   }
   
