@@ -8,7 +8,6 @@
 #' @param threshold is to determine if the detected peak is the real peak whose intensity should be higher than threshold*maximum intensity. Default is 0.2.
 #' @return return the number of waveform componments.
 #' @importFrom caTools runmean
-#' @export
 #' @examples
 #'
 #' ##import return waveform data
@@ -23,7 +22,8 @@
 #'    y<-c(c(1,2,3),as.numeric(x))
 #'    npeaks(y,drop=c(1,3))
 #'
-
+#'
+#' @export
 npeaks<-function(y,drop=c(0,0),smooth=TRUE,threshold=0.2){
   y<-as.numeric(unlist(y))
   y[y==0]<-NA

@@ -25,7 +25,6 @@
 
 #' @return The deconvovled waveform.
 #' @import data.table
-#' @export
 #' @references
 #'   Zhou, Tan*, Sorin C. Popescu, Keith Krause, Ryan D. Sheridan, and Eric Putman, 2017. Gold-A novel deconvolution algorithm with
 #'   optimization for waveform LiDAR processing. ISPRS Journal of Photogrammetry and Remote Sensing 129 (2017):
@@ -58,6 +57,7 @@
 #' ## In addition, the accuracy of impulse function significantly affects results based on experiments.
 #' }
 
+#' @export
 deconvolution <- function(re,out,imp,imp_out=NULL,method =c("Gold"),np=2,rescale=TRUE,
                         small_paras=list(c(30,2,1.8,30,2,1.8)),large_paras=list(c(30,3,1.8,40,3,1.8)),
                         imp_out_pars=c(20,5,1.8)){
@@ -165,8 +165,3 @@ deconvolution <- function(re,out,imp,imp_out=NULL,method =c("Gold"),np=2,rescale
   return(round(de,2))
     
 }
-
-
-
-
-
